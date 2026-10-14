@@ -167,7 +167,7 @@ pub async fn sse_handler(
                         .arg("0-0")
                         .arg("COUNT")
                         .arg(20u64)
-                        .query_async(&mut valkey.clone())
+                        .query_async(&valkey.clone())
                         .await;
                 match claimed {
                     Ok((_, entries, _deleted)) => {
@@ -220,7 +220,7 @@ pub async fn sse_handler(
                 .arg("STREAMS")
                 .arg(&stream)
                 .arg(">")
-                .query_async(&mut valkey.clone())
+                .query_async(&valkey.clone())
                 .await;
 
             let messages = match result {
@@ -284,7 +284,7 @@ pub async fn sse_handler(
                 let pending_raw: Option<glide::ValkeyValue> = glide::cmd("XPENDING")
                     .arg(&stream)
                     .arg(&group)
-                    .query_async(&mut valkey.clone())
+                    .query_async(&valkey.clone())
                     .await
                     .ok();
                 if let Some(glide::ValkeyValue::Array(arr)) = pending_raw {

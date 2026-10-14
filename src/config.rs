@@ -43,7 +43,7 @@ impl BusConfig {
             valkey_url: env::var("SENTIN8_BUS_VALKEY_URL")
                 .ok()
                 .filter(|s| !s.trim().is_empty())
-                .unwrap_or_else(|| sentin8::config::service_valkey_url()),
+                .unwrap_or_else(sentin8::config::service_valkey_url),
             database_url: env::var("SENTIN8_BUS_DATABASE_URL").unwrap_or_else(|_| {
                 sentin8::config::Sentin8Config::default_database_url().to_string()
             }),
