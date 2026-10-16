@@ -1,0 +1,845 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "sentin8-bus",
+    "description": "Sentin8 Sentin8:Bus — Valkey Streams message bus with tenant isolation.",
+    "license": {
+      "name": "MIT OR Apache-2.0",
+      "identifier": "MIT OR Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/ack": {
+      "post": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle ack.",
+        "operationId": "ack.send",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Messages acknowledged"
+          },
+          "403": {
+            "description": "Missing bus:consume scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:consume": []
+          }
+        ]
+      }
+    },
+    "/v1/consume": {
+      "post": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle consume.",
+        "operationId": "consume.list",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Consumed messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumeResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing bus:consume scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:consume": []
+          }
+        ]
+      }
+    },
+    "/v1/dlq": {
+      "get": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "List dlq.",
+        "operationId": "dlq.list",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "DLQ entries"
+          },
+          "403": {
+            "description": "Missing bus:admin scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:admin": []
+          }
+        ]
+      }
+    },
+    "/v1/dlq/replay": {
+      "post": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle replay dlq.",
+        "operationId": "dlq.replay",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DlqReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "DLQ entry replayed"
+          },
+          "403": {
+            "description": "Missing bus:admin scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:admin": []
+          }
+        ]
+      }
+    },
+    "/v1/metrics": {
+      "get": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle metrics.",
+        "operationId": "metrics.get",
+        "responses": {
+          "200": {
+            "description": "Prometheus-style metrics",
+            "content": {
+              "text/plain": {}
+            }
+          },
+          "403": {
+            "description": "Missing bus:admin scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:admin": []
+          }
+        ]
+      }
+    },
+    "/v1/nack": {
+      "post": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle nack.",
+        "operationId": "nack.send",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Message nacked"
+          },
+          "403": {
+            "description": "Missing bus:consume scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:consume": []
+          }
+        ]
+      }
+    },
+    "/v1/produce": {
+      "post": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle produce.",
+        "operationId": "produce.send",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProduceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Message produced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProduceResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing bus:produce scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:produce": []
+          }
+        ]
+      }
+    },
+    "/v1/produce/batch": {
+      "post": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "`POST /v1/produce/batch` — produce N events in one call (BUS-3, bus\nDESIGN §4.3 / README §7). Each row runs through the SAME single-produce\ncore (validation, rate limit, inbox persist, XADD, stamp, audit) — the\nbatch is a transport-level optimization, not a transaction: rows are\nindependent and a failed row does not roll back its siblings.",
+        "operationId": "produce.batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProduceBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch accepted (per-row results)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProduceBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Batch too large (max 100)"
+          },
+          "403": {
+            "description": "Missing bus:produce scope"
+          },
+          "429": {
+            "description": "Per-family produce rate limit"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:produce": []
+          }
+        ]
+      }
+    },
+    "/v1/schedule": {
+      "post": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle schedule.",
+        "operationId": "schedule.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Message scheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing bus:produce scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:produce": []
+          }
+        ]
+      }
+    },
+    "/v1/scheduled": {
+      "get": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "List scheduled.",
+        "operationId": "scheduled.list",
+        "responses": {
+          "200": {
+            "description": "Due scheduled messages"
+          },
+          "403": {
+            "description": "Missing bus:consume scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:consume": []
+          }
+        ]
+      }
+    },
+    "/v1/streams": {
+      "get": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "List streams.",
+        "operationId": "stream.list",
+        "responses": {
+          "200": {
+            "description": "List of streams"
+          },
+          "403": {
+            "description": "Missing bus:consume scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:consume": []
+          }
+        ]
+      }
+    },
+    "/v1/streams/{stream_family}/lag": {
+      "get": {
+        "tags": [
+          "bus"
+        ],
+        "summary": "Handle stream lag.",
+        "operationId": "stream.lag",
+        "parameters": [
+          {
+            "name": "stream_family",
+            "in": "path",
+            "description": "Stream family",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consumer group lag"
+          },
+          "403": {
+            "description": "Missing bus:consume scope"
+          }
+        },
+        "security": [
+          {
+            "sentin8:bus:consume": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AckRequest": {
+        "type": "object",
+        "description": "Request body for ack.",
+        "required": [
+          "stream_family",
+          "consumer_group",
+          "message_id"
+        ],
+        "properties": {
+          "consumer_group": {
+            "type": "string",
+            "description": "The consumer group."
+          },
+          "message_id": {
+            "type": "string",
+            "description": "message identifier."
+          },
+          "stream_family": {
+            "type": "string",
+            "description": "The stream family."
+          }
+        }
+      },
+      "ConsumeMessage": {
+        "type": "object",
+        "description": "The consumemessage type.",
+        "required": [
+          "message_id",
+          "stream_family",
+          "env_id",
+          "event_type",
+          "schema_version",
+          "payload",
+          "correlation_id",
+          "produced_by",
+          "produced_at"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string",
+            "description": "correlation identifier."
+          },
+          "env_id": {
+            "type": "string",
+            "description": "env identifier."
+          },
+          "event_type": {
+            "type": "string",
+            "description": "The event type."
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The idempotency key."
+          },
+          "message_id": {
+            "type": "string",
+            "description": "message identifier."
+          },
+          "payload": {
+            "description": "The payload."
+          },
+          "produced_at": {
+            "type": "string",
+            "description": "The produced at."
+          },
+          "produced_by": {
+            "type": "string",
+            "description": "The produced by."
+          },
+          "publisher_id_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The publisher id token."
+          },
+          "publisher_subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The publisher subject."
+          },
+          "publisher_vertical": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The verified producer's vertical claim (VDC-2) — recorded at\nproduce from the M2M token; consumers assert it against the\nevent_type's first colon segment (`require_publisher`)."
+          },
+          "schema_version": {
+            "type": "string",
+            "description": "The schema version."
+          },
+          "stream_family": {
+            "type": "string",
+            "description": "The stream family."
+          }
+        }
+      },
+      "ConsumeRequest": {
+        "type": "object",
+        "description": "Request body for consume.",
+        "required": [
+          "stream_family",
+          "consumer_group"
+        ],
+        "properties": {
+          "block_ms": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The block ms.",
+            "minimum": 0
+          },
+          "consumer_group": {
+            "type": "string",
+            "description": "The consumer group."
+          },
+          "consumer_name": {
+            "type": "string",
+            "description": "The consumer name."
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The count count.",
+            "minimum": 0
+          },
+          "stream_family": {
+            "type": "string",
+            "description": "The stream family."
+          }
+        }
+      },
+      "ConsumeResponse": {
+        "type": "object",
+        "description": "Response payload for consume.",
+        "required": [
+          "messages"
+        ],
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsumeMessage"
+            },
+            "description": "The messages."
+          }
+        }
+      },
+      "DlqQuery": {
+        "type": "object",
+        "description": "The dlqquery type.",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The page."
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The page size."
+          }
+        }
+      },
+      "DlqReplayRequest": {
+        "type": "object",
+        "description": "Request body for dlqreplay.",
+        "required": [
+          "stream_family",
+          "message_id"
+        ],
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "description": "message identifier."
+          },
+          "stream_family": {
+            "type": "string",
+            "description": "The stream family."
+          }
+        }
+      },
+      "NackRequest": {
+        "type": "object",
+        "description": "Request body for nack.",
+        "required": [
+          "stream_family",
+          "consumer_group",
+          "message_id"
+        ],
+        "properties": {
+          "consumer_group": {
+            "type": "string",
+            "description": "The consumer group."
+          },
+          "message_id": {
+            "type": "string",
+            "description": "message identifier."
+          },
+          "retry_after_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The retry after secs.",
+            "minimum": 0
+          },
+          "retry_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "How many retries this message has already burned (nack count —\nmaintained by the consumer across redeliveries). At `MAX_RETRIES`\nthe reaper routes the message to the DLQ instead of the retry set.\nThe retry count.",
+            "minimum": 0
+          },
+          "stream_family": {
+            "type": "string",
+            "description": "The stream family."
+          }
+        }
+      },
+      "ProduceBatchItem": {
+        "type": "object",
+        "description": "One row's produce result in a `POST /v1/produce/batch` response.",
+        "required": [
+          "index"
+        ],
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The failure reason (on error)."
+          },
+          "index": {
+            "type": "integer",
+            "description": "Row index in the request.",
+            "minimum": 0
+          },
+          "message_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The produced message id (on success)."
+          },
+          "stream": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The target stream (on success)."
+          }
+        }
+      },
+      "ProduceBatchRequest": {
+        "type": "object",
+        "description": "Request body for `POST /v1/produce/batch` — N events in ONE call\n(bus DESIGN §4.3 / README §7). Rows are independent: the batch is a\ntransport-level optimization, not a transaction.",
+        "required": [
+          "events"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProduceRequest"
+            },
+            "description": "The batched events (max 100 per call — matches the outbox relay\ndrain batch)."
+          }
+        }
+      },
+      "ProduceBatchResponse": {
+        "type": "object",
+        "description": "Response from `POST /v1/produce/batch`.",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProduceBatchItem"
+            },
+            "description": "Per-row results, in request order. A failed row carries `error`\nand no `message_id` — the batch is best-effort per row."
+          }
+        }
+      },
+      "ProduceRequest": {
+        "type": "object",
+        "description": "Request body for `POST /v1/produce`.",
+        "required": [
+          "stream_family",
+          "event_type",
+          "payload"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Correlation id; generated by the server when absent."
+          },
+          "env_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Tenant env — must match the JWT-derived tenant context (a\ndefense-in-depth server check). Absent → the server uses the JWT\nclaims."
+          },
+          "event_type": {
+            "type": "string",
+            "description": "Platform event name — `vertical:service:resource:operation`."
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Idempotency key for exactly-once consumers."
+          },
+          "payload": {
+            "description": "The domain payload."
+          },
+          "publisher_id_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Publisher identity token — optional. If absent, the server derives\nit from the Authorization header."
+          },
+          "publisher_subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Publisher subject (`sub` claim). If absent, the server derives it\nfrom the verified token claims."
+          },
+          "stream_family": {
+            "type": "string",
+            "description": "The stream family to publish into."
+          }
+        }
+      },
+      "ProduceResponse": {
+        "type": "object",
+        "description": "Response from `POST /v1/produce`.",
+        "required": [
+          "message_id",
+          "stream"
+        ],
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "description": "Stream entry id (format: `<timestamp>-<sequence>`) or a UUID."
+          },
+          "stream": {
+            "type": "string",
+            "description": "The target stream key the event was published into."
+          }
+        }
+      },
+      "ScheduleRequest": {
+        "type": "object",
+        "description": "Request body for schedule.",
+        "required": [
+          "stream_family",
+          "event_type",
+          "payload"
+        ],
+        "properties": {
+          "delay_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The delay seconds.",
+            "minimum": 0
+          },
+          "event_type": {
+            "type": "string",
+            "description": "The event type."
+          },
+          "payload": {
+            "description": "The payload."
+          },
+          "stream_family": {
+            "type": "string",
+            "description": "The stream family."
+          }
+        }
+      },
+      "ScheduleResponse": {
+        "type": "object",
+        "description": "Response payload for schedule.",
+        "required": [
+          "message_id",
+          "delivery_at"
+        ],
+        "properties": {
+          "delivery_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The delivery at."
+          },
+          "message_id": {
+            "type": "string",
+            "description": "message identifier."
+          }
+        }
+      }
+    }
+  },
+  "security": [],
+  "tags": [
+    {
+      "name": "bus",
+      "description": "Sentin8:Bus admin API — produce, consume, ack, DLQ, streams, metrics"
+    }
+  ]
+}
