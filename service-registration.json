@@ -4,7 +4,11 @@
     {
       "service_type": "sentin8:bus",
       "subdomain": "bus",
-      "binary": "sentin8-bus"
+      "binary": "sentin8-bus",
+      "telemetry_property": {
+        "slug": "bus",
+        "name": "Sentin8:Bus Platform Telemetry"
+      }
     }
   ]
 }
