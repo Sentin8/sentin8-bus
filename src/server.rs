@@ -16,6 +16,15 @@ pub async fn build_state(
     let config = crate::config::BusConfig::from_env();
     let valkey = sentin8::middleware::valkey_client(&config.valkey_url, "sentin8:bus").await?;
 
+    // BUSCONNP-1: the fixed dedicated-client pool for HTTP consume
+    // blocking reads — connected at boot so the first read pays no
+    // handshake; a partially-failed pool still serves (fail-open).
+    let consume_pool = crate::consume_pool::ConsumePool::connect(&config.valkey_url, 8).await?;
+    tracing::info!(
+        size = consume_pool.size(),
+        "bus: blocking-consume connection pool connected"
+    );
+
     let pool = core.pool.clone();
 
     crate::inbox_relay::spawn(pool.clone(), valkey.clone(), config.database_url.clone());
@@ -54,6 +63,7 @@ pub async fn build_state(
     let state = AppState {
         config: Arc::new(config.clone()),
         valkey: valkey.clone(),
+        consume_pool: Arc::new(consume_pool),
         pool: pool.clone(),
         policy: policy_engine.clone(),
         workload_registry,

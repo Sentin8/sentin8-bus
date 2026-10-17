@@ -9,6 +9,7 @@ mod admin_ui;
 mod auth;
 #[allow(dead_code)]
 mod config;
+mod consume_pool;
 #[allow(dead_code)]
 mod handlers;
 mod inbox_relay;

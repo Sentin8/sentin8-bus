@@ -69,8 +69,13 @@ fn audit_event(action: &str, actor: &str, env_id: &str, details: serde_json::Val
 pub struct AppState {
     /// The config.
     pub config: Arc<BusConfig>,
-    /// The Valkey GLIDE client.
+    /// The Valkey GLIDE client (shared command plane — non-blocking
+    /// commands only; blocking reads ride the consume pool).
     pub valkey: glide::GlideClient,
+    /// The blocking-consume connection pool (BUSCONNP-1): every
+    /// `POST /v1/consume` blocking `XREADGROUP` leases a dedicated
+    /// client from here for the duration of the read.
+    pub consume_pool: Arc<crate::consume_pool::ConsumePool>,
     /// The pool.
     pub pool: sqlx::PgPool,
 
@@ -472,6 +477,13 @@ fn default_count() -> u64 {
     10
 }
 
+/// The server-side cap on a consume request's `block_ms` (BUSCONNP-1,
+/// DESIGN.md §8 invariant 10): the caller's blocking hint is honored
+/// up to 5s — the bus, not the caller, owns its connection occupancy
+/// budget. Longer hints are truncated (the caller observes the cap as a
+/// sooner empty batch, never an error).
+const BLOCK_MS_CAP: u64 = 5_000;
+
 fn default_consumer_name() -> String {
     "ws-consumer".to_string()
 }
@@ -565,18 +577,41 @@ pub async fn consume(
         .query_async(&conn)
         .await;
 
+    // BUSCONNP-1 (DESIGN.md §8 invariant 10): the blocking XREADGROUP
+    // runs on a DEDICATED pooled client — never the shared command
+    // client. A blocking read on the shared client serializes behind
+    // all other Valkey traffic; short-block pollers then pin the GLIDE
+    // watchdog's pending count and sustain a silent empty-batch
+    // timeout storm. The pool size bounds concurrent blocking reads;
+    // surplus callers queue at acquire.
+    let leased = match state.consume_pool.acquire().await {
+        Ok(l) => l,
+        Err(e) => {
+            tracing::warn!(error = %e, "bus: consume pool acquire failed");
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                "valkey unavailable".to_string(),
+            ));
+        }
+    };
+    // The caller's block_ms is a HINT; the bus owns its connection
+    // occupancy budget (invariant 10): cap at 5s.
+    let block_ms = req.block_ms.min(BLOCK_MS_CAP);
+
     let mut cmd = glide::cmd("XREADGROUP");
     cmd.arg("GROUP")
         .arg(&group)
         .arg(&req.consumer_name)
         .arg("COUNT")
         .arg(req.count);
-    if req.block_ms > 0 {
-        cmd.arg("BLOCK").arg(req.block_ms);
+    if block_ms > 0 {
+        cmd.arg("BLOCK").arg(block_ms);
     }
     cmd.arg("STREAMS").arg(&stream).arg(">");
 
-    let result: glide::ValkeyResult<Vec<(String, StreamEntries)>> = cmd.query_async(&conn).await;
+    let result: glide::ValkeyResult<Vec<(String, StreamEntries)>> =
+        cmd.query_async(leased.client()).await;
+    drop(leased);
 
     let messages = match result {
         Ok(entries) => {
@@ -627,7 +662,20 @@ pub async fn consume(
             }
             msgs
         }
-        Err(_) => vec![],
+        Err(e) => {
+            // A timed-out or failed read is an EMPTY batch — the PEL
+            // holds nothing (nothing was delivered), so the caller
+            // simply re-polls (BUSCONNP-1 consume lifecycle). The miss
+            // is logged at debug so a poller storm is observable without
+            // spamming WARN.
+            tracing::debug!(
+                error = %e,
+                stream = %stream,
+                block_ms,
+                "bus: consume XREADGROUP missed — empty batch returned"
+            );
+            vec![]
+        }
     };
 
     Ok(Json(ConsumeResponse { messages }))

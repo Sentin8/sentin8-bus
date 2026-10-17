@@ -51,8 +51,11 @@ sequenceDiagram
   dedupe insert → XADD to the stream → 202. The relay in
   `inbox_relay` pushes accepted rows to the stream (the inbox is the
   durability point).
-- **Consume paths** — HTTP `GET /v1/consume` (pull, one-shot) and
-  `GET /v1/consume/sse` (long-lived server push). Each SSE consumer
+- **Consume paths** — HTTP `GET /v1/consume` (pull, one-shot; the blocking
+  `XREADGROUP` runs on a dedicated pooled connection — `consume_pool.rs`
+  — never the shared command client, and a caller's `block_ms` is
+  server-capped at 5000) and `GET /v1/consume/sse` (long-lived server
+  push). Each SSE consumer
   gets a DEDICATED Valkey connection; a pending-entry redelivery sweep
   (XAUTOCLAIM) recovers entries abandoned by dead consumers.
 - **Delayed/scheduled queue** — events with a future `deliver_at` are
