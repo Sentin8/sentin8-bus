@@ -1,4 +1,4 @@
-# DESIGN.md: Sentin8:Bus — Detailed Design Document
+# Sentin8:Bus — Detailed Design Document
 
 ## 1. Scope & Context
 
