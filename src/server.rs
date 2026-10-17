@@ -21,9 +21,13 @@ pub async fn build_state(
     crate::inbox_relay::spawn(pool.clone(), valkey.clone(), config.database_url.clone());
 
     let policy_engine = core.admin.policy.clone();
+    // BOOTDEAD-1: the client resolution moved INSIDE the hot-reload loop
+    // (a fresh-boot supervisor deadlocked waiting for a certificate only
+    // its own spawn loop could make mintable).
     crate::policy::spawn_hot_reload(
         pool.clone(),
-        crate::policy::policy_bus_client("sentin8:bus").await,
+        config.sentin8_auth_issuer.as_str(),
+        "sentin8:bus",
         policy_engine.clone(),
     );
 
