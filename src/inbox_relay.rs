@@ -21,8 +21,35 @@ async fn run(pool: sqlx::PgPool, valkey: glide::GlideClient, listener_dsn: Strin
     let batch_size: i64 = 1000;
     let safety_poll = Duration::from_secs(2);
 
+    // The LISTEN connection is a dedicated 1-connection pool built from
+    // the same certificate-presenting options as the service pool
+    // (DESIGN §2, BUSLISTEN-1): `PgListener::connect` on the raw DSN
+    // would present no client certificate and be refused by the
+    // TLS-only cert-auth plane, silently degrading the relay to
+    // poll-only at every boot.
+    let listener_pool = match sentin8::config::pg_pool::connect_options_for(&listener_dsn) {
+        Ok(opts) => match sqlx::pool::PoolOptions::default()
+            .max_connections(1)
+            .max_lifetime(None)
+            .idle_timeout(None)
+            .connect_with(opts)
+            .await
+        {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::error!(error = %e, "failed to connect the LISTEN pool — falling back to poll-only");
+                run_poll_only(pool, valkey, safety_poll, batch_size).await;
+                return;
+            }
+        },
+        Err(e) => {
+            tracing::error!(error = %e, "invalid listener DSN (certificate identity) — falling back to poll-only");
+            run_poll_only(pool, valkey, safety_poll, batch_size).await;
+            return;
+        }
+    };
     let conn_str = listener_dsn.clone();
-    let mut listener = match sqlx::postgres::PgListener::connect(&conn_str).await {
+    let mut listener = match sqlx::postgres::PgListener::connect_with(&listener_pool).await {
         Ok(l) => {
             tracing::info!("bus inbox relay LISTEN on bus_inbox_changed");
             l
@@ -66,7 +93,18 @@ async fn run(pool: sqlx::PgPool, valkey: glide::GlideClient, listener_dsn: Strin
             Ok(Err(e)) => {
                 tracing::error!(error = %e, "PgListener error — will reconnect");
                 tokio::time::sleep(Duration::from_secs(1)).await;
-                match sqlx::postgres::PgListener::connect(&conn_str).await {
+                let reconnected: Result<sqlx::postgres::PgListener, sqlx::Error> = async {
+                    let opts = sentin8::config::pg_pool::connect_options_for(&conn_str)?;
+                    let pool = sqlx::pool::PoolOptions::default()
+                        .max_connections(1)
+                        .max_lifetime(None)
+                        .idle_timeout(None)
+                        .connect_with(opts)
+                        .await?;
+                    sqlx::postgres::PgListener::connect_with(&pool).await
+                }
+                .await;
+                match reconnected {
                     Ok(new_listener) => {
                         listener = new_listener;
                         let _ = listener.listen("bus_inbox_changed").await;
