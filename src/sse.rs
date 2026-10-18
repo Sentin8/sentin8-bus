@@ -17,7 +17,7 @@ use crate::handlers::{
     stream_key, validate_stream_family, AppState, ConsumeMessage, StreamEntries,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams, utoipa::ToSchema)]
 /// The ssequery type.
 pub struct SseQuery {
     /// The stream family.
@@ -44,7 +44,20 @@ fn make_sse_event(msg: &ConsumeMessage) -> axum::response::sse::Event {
         .data(json)
 }
 
-/// Handle SSE handler.
+/// Long-lived SSE consume (server → client one-way) — the direct-consumer
+/// transport (bus DESIGN §4.3): the client receives every stream message
+/// as an SSE event and ACKs via `POST /v1/ack`.
+#[utoipa::path(
+    get,
+    path = "/v1/consume/sse",
+    params(SseQuery),
+    responses(
+        (status = 200, description = "SSE stream (event = ConsumeMessage JSON)", body = serde_json::Value),
+        (status = 401, description = "Caller authentication failed (bearer / cert identity)"),
+    ),
+    security(("sentin8:bus:consume" = [])),
+    tag = "bus",
+)]
 pub async fn sse_handler(
     Query(q): Query<SseQuery>,
     State(state): State<AppState>,

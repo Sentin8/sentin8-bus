@@ -15,7 +15,7 @@ use sentin8::rfw::widget::*;
 use serde::Deserialize;
 use sqlx::Row;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::IntoParams, utoipa::ToSchema)]
 /// The targetenvquery type.
 pub struct TargetEnvQuery {
     #[serde(default)]
@@ -23,6 +23,21 @@ pub struct TargetEnvQuery {
 }
 
 /// Fetch admin ui.
+#[utoipa::path(
+    get,
+    path = "/v1/admin/ui/{page}",
+    params(
+        ("page" = String, Path, description = "RFW page name"),
+        ("target_env_id" = String, Query, description = "Target env (RLS context)")
+    ),
+    responses(
+        (status = 200, description = "RFW page definition (rendered by Sentin8:Dash)", body = serde_json::Value),
+        (status = 403, description = "Caller lacks a bus read/admin scope"),
+        (status = 404, description = "Unknown page"),
+    ),
+    security(("sentin8:bus:read" = [])),
+    tag = "admin-ui",
+)]
 pub async fn get_admin_ui(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -106,6 +121,21 @@ pub async fn get_admin_ui(
 }
 
 /// Fetch admin data.
+#[utoipa::path(
+    get,
+    path = "/v1/admin/{resource}",
+    params(
+        ("resource" = String, Path, description = "Admin data resource (streams, dlq, ...)"),
+        ("target_env_id" = String, Query, description = "Target env (RLS context)")
+    ),
+    responses(
+        (status = 200, description = "The resource's rows for the RFW table", body = serde_json::Value),
+        (status = 403, description = "Caller lacks a bus read/admin scope"),
+        (status = 404, description = "Unknown resource"),
+    ),
+    security(("sentin8:bus:read" = [])),
+    tag = "admin-ui",
+)]
 pub async fn get_admin_data(
     State(state): State<AppState>,
     headers: HeaderMap,
