@@ -24,6 +24,7 @@ use crate::config::BusConfig;
 use sentin8::bus::contracts::{
     ProduceBatchItem, ProduceBatchRequest, ProduceBatchResponse, ProduceRequest, ProduceResponse,
 };
+use sentin8::middleware::health::LiveHealth;
 
 // XREAD wire shape: [(stream-name, [(entry-id, [(field, value)])])].
 pub(crate) type StreamEntries = Vec<(String, Vec<(String, String)>)>;
@@ -1086,17 +1087,19 @@ pub async fn list_streams(
     get,
     path = "/v1/health",
     responses(
-        (status = 200, description = "The service is live", body = serde_json::Value),
+        (status = 200, description = "The service is live", body = sentin8::middleware::health::LiveHealth),
     ),
     security(),
     tag = "meta",
 )]
-pub async fn health() -> Json<serde_json::Value> {
-    let mut payload = serde_json::json!({"status": "ok", "version": sentin8::build_info::id(), "build": sentin8::build_info::build_hash()});
-    if let Some(n) = sentin8::middleware::traffic_counter::process_active_connections() {
-        payload["active_connections"] = serde_json::json!(n);
-    }
-    Json(payload)
+pub async fn health() -> Json<LiveHealth> {
+    Json(LiveHealth {
+        status: "ok".to_string(),
+        service: None,
+        version: Some(sentin8::build_info::id()),
+        build: Some(sentin8::build_info::build_hash().to_string()),
+        active_connections: sentin8::middleware::traffic_counter::process_active_connections().map(|n| n as i64),
+    })
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -1329,7 +1332,7 @@ pub async fn stream_lag(
     operation_id = "metrics.get",
     path = "/v1/metrics",
     responses(
-        (status = 200, description = "Prometheus-style metrics", content_type = "text/plain"),
+        (status = 200, description = "Prometheus-style metrics", content_type = "text/plain", body = String),
         (status = 403, description = "Missing bus:admin scope"),
     ),
     security(("sentin8:bus:admin" = [])),

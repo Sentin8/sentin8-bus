@@ -52,7 +52,7 @@ fn make_sse_event(msg: &ConsumeMessage) -> axum::response::sse::Event {
     path = "/v1/consume/sse",
     params(SseQuery),
     responses(
-        (status = 200, description = "SSE stream (event = ConsumeMessage JSON)", body = serde_json::Value),
+        (status = 200, description = "SSE stream (event = ConsumeMessage JSON)", body = ConsumeMessage),
         (status = 401, description = "Caller authentication failed (bearer / cert identity)"),
     ),
     security(("sentin8:bus:consume" = [])),
