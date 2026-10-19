@@ -6,7 +6,7 @@
 //! Router ↔ OpenAPI drift guard (OAPEC design §3).
 //!
 //! Introspects the typed route table (`Router<AppState>` BEFORE
-//! `with_state` — the guard dispatches no request, so no state is needed)
+//! `with_state` - the guard dispatches no request, so no state is needed)
 //! and asserts the compiled spec covers every served route + no stale spec
 //! pairs. Add a route without an annotation and this fails in CI before
 //! the site API pages can trail.

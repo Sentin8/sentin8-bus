@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Sentin8:Bus
 // SPDX-License-Identifier: Apache-2.0
 
-// Integration tests for Bus — Story 2.1.17 + 22.16b.5
+// Integration tests for Bus - Story 2.1.17 + 22.16b.5
 //
 // Tests stream key construction, tenant isolation logic, and message
 // serialization. Full Valkey-dependent tests require a live Valkey instance.
@@ -52,10 +52,10 @@ fn stream_key_has_no_special_chars() {
     assert!(!key.contains('\n'));
 }
 
-// ── Story 22.16b.5 — CLI command surface integration tests ───────────
+// ── Story 22.16b.5 - CLI command surface integration tests ───────────
 //
 // These tests verify the CLI command registry entries map to real
-// handler paths. They dont require a live Valkey instance — they check
+// handler paths. They dont require a live Valkey instance - they check
 // the `cli_commands` declarations in the registry against the handler
 // function signatures. The actual round-trip (`bus produce` → `bus
 // consume` → `bus ack`) is validated by the e2e-ts suites (see
@@ -78,7 +78,7 @@ fn cli_consume_command_requires_scope() {
 #[test]
 fn cli_ack_nack_commands_require_scopes() {
     // bus ack send  → sentin8:bus:consume (POST /v1/ack)
-    // bus nack send → sentin8:bus:consume (POST /v1/nack) — both commands
+    // bus nack send → sentin8:bus:consume (POST /v1/nack) - both commands
     // ride the same consume scope; the CLI declares it like produce above.
 }
 

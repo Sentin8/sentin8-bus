@@ -3,16 +3,16 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Sentin8:Bus
 // SPDX-License-Identifier: Apache-2.0
 
-//! Bus reaper — the self-draining loop for the retry and delayed queues
+//! Bus reaper - the self-draining loop for the retry and delayed queues
 //! (bus `DESIGN.md` §4.3, §10).
 //!
 //! Two sorted sets per env carry deferred work:
-//! - `bus:retry:{env}` — nacked messages waiting for their `retry_at`
+//! - `bus:retry:{env}` - nacked messages waiting for their `retry_at`
 //!   score. The reaper re-XADDs due entries to their source stream and
 //!   ZREMs them; entries whose `retry_count` has exhausted `MAX_RETRIES`
 //!   land in `bus:dlq:{env}` instead (manual replay stays the recovery
-//!   path — the reaper never replays from the DLQ).
-//! - `bus:delayed:{env}` — scheduled messages waiting for `delivery_at`.
+//!   path - the reaper never replays from the DLQ).
+//! - `bus:delayed:{env}` - scheduled messages waiting for `delivery_at`.
 //!   Due entries are XADDed to their target stream with the stored
 //!   event_type/payload and removed.
 //!
@@ -27,7 +27,7 @@ use std::sync::Arc;
 /// Retry cap before a nacked message is routed to the DLQ.
 pub const MAX_RETRIES: u32 = 5;
 
-/// Poll cadence (seconds) — the safety poll alongside consumer-driven
+/// Poll cadence (seconds) - the safety poll alongside consumer-driven
 /// wake-ups.
 const POLL_INTERVAL_SECS: u64 = 10;
 

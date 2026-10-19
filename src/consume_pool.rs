@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Sentin8:Bus
 // SPDX-License-Identifier: Apache-2.0
 
-//! The blocking-consume connection pool — the BUSCONNP-1 invariant
+//! The blocking-consume connection pool - the BUSCONNP-1 invariant
 //! (`DESIGN.md` §8 invariant 10): a blocking `XREADGROUP` from the HTTP
 //! consume handler NEVER occupies the shared command client.
 //!
@@ -15,15 +15,15 @@
 //! process-global pending count above its `SystemOverload` threshold
 //! (~200 idle SSE consumers already register there), and sustains a
 //! timeout storm in which each miss silently returns an empty batch
-//! (`Err(_) => vec![]`) — the caller re-polls, and the storm feeds
+//! (`Err(_) => vec![]`) - the caller re-polls, and the storm feeds
 //! itself.
 //!
-//! The pool is a fixed set of DEDICATED GLIDE clients — the same
+//! The pool is a fixed set of DEDICATED GLIDE clients - the same
 //! discipline `sse.rs` applies per SSE connection and the SDK's
 //! `StreamSubscriber` applies per durable consumer (group DESIGN §3.1):
 //! a blocking read can never stall anyone else's XADD/ACK/PUBLISH, and
 //! the pool size (not the caller population) bounds how many blocking
-//! reads run concurrently — surplus callers queue at acquire, so a
+//! reads run concurrently - surplus callers queue at acquire, so a
 //! poller storm cannot multiply into unbounded Valkey connections.
 
 use std::sync::Arc;
@@ -31,7 +31,7 @@ use std::sync::Arc;
 use glide::GlideClient;
 use tokio::sync::{Mutex, Semaphore};
 
-/// The pool — the fixed client set plus the permit semaphore that hands
+/// The pool - the fixed client set plus the permit semaphore that hands
 /// them out one-to-one. Acquire is FIFO-fair under contention
 /// (`tokio::sync::Semaphore`).
 pub struct ConsumePool {
@@ -42,7 +42,7 @@ pub struct ConsumePool {
 }
 
 impl ConsumePool {
-    /// Build the pool eagerly — every client is connected at boot so the
+    /// Build the pool eagerly - every client is connected at boot so the
     /// first blocking consume never pays a TLS handshake on the request
     /// path. A failed connection does NOT abort boot: the slot is
     /// retried on demand at acquire time (the same fail-open posture the
@@ -50,7 +50,7 @@ impl ConsumePool {
     ///
     /// # Errors
     /// Returns the LAST connection error only when EVERY client fails to
-    /// connect — a partially connected pool still serves traffic.
+    /// connect - a partially connected pool still serves traffic.
     pub async fn connect(valkey_url: &str, size: usize) -> anyhow::Result<Self> {
         let size = size.max(1);
         let mut clients = Vec::with_capacity(size);
@@ -79,12 +79,12 @@ impl ConsumePool {
     }
 
     /// Acquire a dedicated client for one blocking read. Waits (FIFO)
-    /// when all clients are busy — a saturated pool delays surplus
+    /// when all clients are busy - a saturated pool delays surplus
     /// pollers rather than multiplying connections.
     ///
     /// # Errors
     /// Returns an error only if the acquired slot must (re)connect and
-    /// the connection attempt fails — the caller surfaces 503, the same
+    /// the connection attempt fails - the caller surfaces 503, the same
     /// posture as the SSE handler's connection failure.
     pub async fn acquire(&self) -> anyhow::Result<LeasedClient<'_>> {
         let permit = self
@@ -98,7 +98,7 @@ impl ConsumePool {
             Some(c) => c,
             None => {
                 // All clients were taken but a permit freed without the
-                // client returning — a bug in the release path. Reconnect
+                // client returning - a bug in the release path. Reconnect
                 // rather than fail the read.
                 sentin8::middleware::valkey_client(&self.valkey_url, "sentin8:bus")
                     .await
@@ -113,7 +113,7 @@ impl ConsumePool {
     }
 }
 
-/// A leased dedicated client — returned to the pool on drop, so a
+/// A leased dedicated client - returned to the pool on drop, so a
 /// handler panic or early return can never strand a slot.
 pub struct LeasedClient<'a> {
     client: Option<GlideClient>,

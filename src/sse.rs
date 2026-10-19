@@ -44,7 +44,7 @@ fn make_sse_event(msg: &ConsumeMessage) -> axum::response::sse::Event {
         .data(json)
 }
 
-/// Long-lived SSE consume (server → client one-way) — the direct-consumer
+/// Long-lived SSE consume (server → client one-way) - the direct-consumer
 /// transport (bus DESIGN §4.3): the client receives every stream message
 /// as an SSE event and ACKs via `POST /v1/ack`.
 #[utoipa::path(
@@ -63,7 +63,7 @@ pub async fn sse_handler(
     State(state): State<AppState>,
     req_headers: HeaderMap,
 ) -> Response {
-    // auth DESIGN §4.3f: certificate-first — a platform
+    // auth DESIGN §4.3f: certificate-first - a platform
     // workload presents its Acme-issued client certificate at the TLS
     // handshake and needs NO bearer at all (the registry map authorizes
     // `sentin8:bus:consume`). The Bearer path remains for user/delegated
@@ -81,7 +81,7 @@ pub async fn sse_handler(
         .and_then(|v| v.to_str().ok())
         .is_some_and(|s| !s.is_empty())
     {
-        // Certificate identity present (TLS-injected after CA verify) —
+        // Certificate identity present (TLS-injected after CA verify) -
         // no bearer needed; the combined verifier resolves the workload.
         req_headers
     } else {
@@ -119,7 +119,7 @@ pub async fn sse_handler(
     let consumer_name = q.consumer_name;
 
     // GLIDE: a DEDICATED client per SSE connection. `GlideClient::clone()`
-    // shares one underlying pipeline — concurrent SSE consumers' blocking
+    // shares one underlying pipeline - concurrent SSE consumers' blocking
     // `XREADGROUP BLOCK 10000` calls serialize behind each other and every
     // queued one times out (the ~23/min TimeoutError storm). The same
     // one-client-per-blocking-consumer discipline the SDK's MemBus

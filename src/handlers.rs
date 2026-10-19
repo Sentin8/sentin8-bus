@@ -18,7 +18,7 @@ use uuid::Uuid;
 use crate::auth;
 use crate::config::BusConfig;
 
-// Produce/consume wire types come from the shared contracts crate — the
+// Produce/consume wire types come from the shared contracts crate - the
 // service re-exports them so the utoipa OpenAPI schema and the HTTP layer
 // use one definition (bus contracts crate is the wire source of truth).
 use sentin8::bus::contracts::{
@@ -33,7 +33,7 @@ pub fn validate_stream_family(family: &str) -> Result<(), (StatusCode, String)> 
     if family.is_empty() || family.len() > 64 {
         return Err((
             StatusCode::BAD_REQUEST,
-            "stream_family must be 1–64 characters".into(),
+            "stream_family must be 1-64 characters".into(),
         ));
     }
     if family == "dlq" || family == "delayed" || family == "jti" {
@@ -69,7 +69,7 @@ fn audit_event(action: &str, actor: &str, env_id: &str, details: serde_json::Val
 pub struct AppState {
     /// The config.
     pub config: Arc<BusConfig>,
-    /// The Valkey GLIDE client (shared command plane — non-blocking
+    /// The Valkey GLIDE client (shared command plane - non-blocking
     /// commands only; blocking reads ride the consume pool).
     pub valkey: glide::GlideClient,
     /// The blocking-consume connection pool (BUSCONNP-1): every
@@ -101,7 +101,7 @@ pub fn stream_key(env_id: &str, family: &str) -> String {
 /// of the event name (`sentin8:sys:service:updated` → `sentin8`,
 /// `bank8:ledger:posting:committed` → `bank8`). Every event name follows the
 /// `vertical:service:resource:operation` convention (AGENTS.md event-naming
-/// rule), so the prefix IS the ownership claim — only the named vertical's
+/// rule), so the prefix IS the ownership claim - only the named vertical's
 /// workloads may mint the event.
 #[must_use]
 pub fn event_vertical_prefix(event_type: &str) -> &str {
@@ -112,7 +112,7 @@ pub fn event_vertical_prefix(event_type: &str) -> &str {
 /// producer's M2M `vertical` claim does not match the event type's owning
 /// vertical (first colon segment). Platform producers carry
 /// `vertical = "sentin8"`; a missing claim (pre-rotation tokens, non-M2M
-/// producers) fails CLOSED — event minting is an M2M-only, provenance-gated
+/// producers) fails CLOSED - event minting is an M2M-only, provenance-gated
 /// surface. Consumption is unrestricted: the gate is produce-side
 /// provenance only (any service may subscribe to any family).
 fn enforce_event_ownership(
@@ -133,7 +133,7 @@ fn enforce_event_ownership(
             format!(
                 "event_ownership: event_type '{event_type}' belongs to vertical \
                  '{expected}' but the producer's identity vertical is '{actual}' \
-                 (VDC-2 — missing or mismatched vertical; enroll the owning service)"
+                 (VDC-2 - missing or mismatched vertical; enroll the owning service)"
             ),
         ));
     }
@@ -166,7 +166,7 @@ pub async fn produce(
         sentin8::shield::EvalTarget::new("sentin8:bus:produce"),
     )
     .await?;
-    // BUS-3: one single-produce core shared with `produce_batch` —
+    // BUS-3: one single-produce core shared with `produce_batch` -
     // `produce` is a thin envelope over it (bus DESIGN §4.3).
     produce_single(&state, &a, &headers, produce_env(&a, req.env_id)?, req)
         .await
@@ -187,9 +187,9 @@ pub async fn produce(
     security(("sentin8:bus:produce" = [])),
     tag = "bus",
 )]
-/// `POST /v1/produce/batch` — produce N events in one call (BUS-3, bus
+/// `POST /v1/produce/batch` - produce N events in one call (BUS-3, bus
 /// DESIGN §4.3 / README §7). Each row runs through the SAME single-produce
-/// core (validation, rate limit, inbox persist, XADD, stamp, audit) — the
+/// core (validation, rate limit, inbox persist, XADD, stamp, audit) - the
 /// batch is a transport-level optimization, not a transaction: rows are
 /// independent and a failed row does not roll back its siblings.
 pub async fn produce_batch(
@@ -218,7 +218,7 @@ pub async fn produce_batch(
     let mut results = Vec::with_capacity(batch.events.len());
     for (index, req) in batch.events.into_iter().enumerate() {
         // Per-row env resolution (bus DESIGN §4.3 tenancy contract): rows
-        // are independent — each row's env is validated against the
+        // are independent - each row's env is validated against the
         // caller's identity class, so a batch may mix tenant envs.
         let env_id = match produce_env(&a, req.env_id) {
             Ok(env) => env,
@@ -255,13 +255,13 @@ pub async fn produce_batch(
 }
 
 /// The produce env contract (bus DESIGN §4.3, WARN-21): the REQUEST's env is
-/// authoritative for M2M workload tokens — tenancy travels per request (the
+/// authoritative for M2M workload tokens - tenancy travels per request (the
 /// outbox relay drains env-by-env and produces tenant-family rows that its
 /// system-env token could never claim), while OWNERSHIP stays per identity
 /// (the `vertical` claim gate, `enforce_event_ownership`). A workload is
 /// cert-bound (RFC 8705): the body env claim is the producer's declaration,
 /// the stream key `bus:{env_id}:{family}` and the rate bucket follow it, and
-/// the audit row records both. USER/delegated tokens keep the strict check —
+/// the audit row records both. USER/delegated tokens keep the strict check -
 /// a human caller produces only into the env their token carries (no
 /// body-env override; cross-env access must come from a role, not a body).
 fn produce_env(a: &auth::AuthContext, req_env: Option<Uuid>) -> Result<Uuid, (StatusCode, String)> {
@@ -298,7 +298,7 @@ async fn produce_single(
     req: ProduceRequest,
 ) -> Result<ProduceResponse, (StatusCode, String)> {
     validate_stream_family(&req.stream_family)?;
-    // VDC-2: event ownership — the event_type's first colon segment must
+    // VDC-2: event ownership - the event_type's first colon segment must
     // match the producer's M2M `vertical` claim (fail-closed on a missing
     // claim; see `enforce_event_ownership`).
     enforce_event_ownership(a, &req.event_type)?;
@@ -307,7 +307,7 @@ async fn produce_single(
     // token-carried for users).
 
     // Per-family produce rate limit (bus README §7, BUS-4): a one-minute
-    // token bucket keyed `(env_id, family)` in Valkey — INCR + PEXPIRE.
+    // token bucket keyed `(env_id, family)` in Valkey - INCR + PEXPIRE.
     // Exceeding the cap returns 429 with `Retry-After: 60` (the bucket
     // window) so producers back off deterministically. `0` disables.
     if state.config.produce_rate_limit_per_minute > 0 {
@@ -346,7 +346,7 @@ async fn produce_single(
         .publisher_subject
         .clone()
         .unwrap_or_else(|| a.effective_subject());
-    // VDC-2: record the verified producer's vertical claim — the consumer
+    // VDC-2: record the verified producer's vertical claim - the consumer
     // side of the event-ownership gate (crates/bus/client
     // `require_publisher` asserts the event_type's first segment matches).
     let publisher_vertical = a.effective_vertical();
@@ -425,10 +425,10 @@ async fn produce_single(
     })?;
 
     // Single-entry delivery (bus design §4.3b): stamp the stream entry id on
-    // the inbox row so the inbox relay skips it — the inline XADD already
+    // the inbox row so the inbox relay skips it - the inline XADD already
     // published this event; without the stamp the relay would XADD the same
     // event a second time. A stamp failure is non-fatal (the row stays
-    // unrelayed-without-id and the relay publishes it — at-least-once is
+    // unrelayed-without-id and the relay publishes it - at-least-once is
     // preserved either way).
     if let Err(e) = sqlx::query("UPDATE inbox SET stream_message_id = $1 WHERE id = $2")
         .bind(&message_id)
@@ -436,7 +436,7 @@ async fn produce_single(
         .execute(&state.pool)
         .await
     {
-        tracing::warn!(error = %e, inbox_id = %inbox_id, "produce: message_id stamp failed — relay will publish");
+        tracing::warn!(error = %e, inbox_id = %inbox_id, "produce: message_id stamp failed - relay will publish");
     }
 
     audit_event(
@@ -479,7 +479,7 @@ fn default_count() -> u64 {
 
 /// The server-side cap on a consume request's `block_ms` (BUSCONNP-1,
 /// DESIGN.md §8 invariant 10): the caller's blocking hint is honored
-/// up to 5s — the bus, not the caller, owns its connection occupancy
+/// up to 5s - the bus, not the caller, owns its connection occupancy
 /// budget. Longer hints are truncated (the caller observes the cap as a
 /// sooner empty batch, never an error).
 const BLOCK_MS_CAP: u64 = 5_000;
@@ -528,7 +528,7 @@ pub struct ConsumeMessage {
     pub publisher_subject: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    /// The verified producer's vertical claim (VDC-2) — recorded at
+    /// The verified producer's vertical claim (VDC-2) - recorded at
     /// produce from the M2M token; consumers assert it against the
     /// event_type's first colon segment (`require_publisher`).
     pub publisher_vertical: Option<String>,
@@ -578,7 +578,7 @@ pub async fn consume(
         .await;
 
     // BUSCONNP-1 (DESIGN.md §8 invariant 10): the blocking XREADGROUP
-    // runs on a DEDICATED pooled client — never the shared command
+    // runs on a DEDICATED pooled client - never the shared command
     // client. A blocking read on the shared client serializes behind
     // all other Valkey traffic; short-block pollers then pin the GLIDE
     // watchdog's pending count and sustain a silent empty-batch
@@ -663,7 +663,7 @@ pub async fn consume(
             msgs
         }
         Err(e) => {
-            // A timed-out or failed read is an EMPTY batch — the PEL
+            // A timed-out or failed read is an EMPTY batch - the PEL
             // holds nothing (nothing was delivered), so the caller
             // simply re-polls (BUSCONNP-1 consume lifecycle). The miss
             // is logged at debug so a poller storm is observable without
@@ -672,7 +672,7 @@ pub async fn consume(
                 error = %e,
                 stream = %stream,
                 block_ms,
-                "bus: consume XREADGROUP missed — empty batch returned"
+                "bus: consume XREADGROUP missed - empty batch returned"
             );
             vec![]
         }
@@ -765,7 +765,7 @@ pub struct NackRequest {
     #[serde(default)]
     /// The retry after secs.
     pub retry_after_secs: Option<u64>,
-    /// How many retries this message has already burned (nack count —
+    /// How many retries this message has already burned (nack count -
     /// maintained by the consumer across redeliveries). At `MAX_RETRIES`
     /// the reaper routes the message to the DLQ instead of the retry set.
     #[serde(default)]
@@ -1426,7 +1426,7 @@ mod vdc_tests {
     #[test]
     fn event_prefix_degenerate_forms_fail_closed() {
         // No colon → the whole name is the prefix; the gate then compares
-        // against the token's vertical claim — a bare `sys` event fails
+        // against the token's vertical claim - a bare `sys` event fails
         // for every producer whose claim is a full vertical name.
         assert_eq!(event_vertical_prefix("no-colons"), "no-colons");
         // Empty event_type → empty prefix → the gate rejects 400.

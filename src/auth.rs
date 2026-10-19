@@ -26,7 +26,7 @@ pub struct AuthContext {
 }
 
 impl AuthContext {
-    /// The caller's scopes for Shield/handler checks — the map-granted
+    /// The caller's scopes for Shield/handler checks - the map-granted
     /// set on the certificate path, the JWT `scope` claim on the bearer
     /// path.
     pub fn effective_scopes(&self) -> Vec<String> {
@@ -49,7 +49,7 @@ impl AuthContext {
         self.claims.has_scope(scope)
     }
 
-    /// The caller's vertical for the VDC-2 event-ownership gate —
+    /// The caller's vertical for the VDC-2 event-ownership gate -
     /// the map-stamped vertical on the certificate path, the JWT claim on
     /// the bearer path.
     pub fn effective_vertical(&self) -> Option<String> {
@@ -59,7 +59,7 @@ impl AuthContext {
         self.claims.vertical.clone()
     }
 
-    /// The caller's subject for audit/publisher stamps — the workload CN
+    /// The caller's subject for audit/publisher stamps - the workload CN
     /// (`m2m-{workload}`) on the certificate path, the JWT `sub` on the
     /// bearer path.
     pub fn effective_subject(&self) -> String {
@@ -158,7 +158,7 @@ pub async fn verify_token(
         })?;
 
     // No one-shot jti replay guard (DESIGN §5): `access`/`delegated`
-    // tokens are REUSABLE credentials — the Delegation Gateway caches
+    // tokens are REUSABLE credentials - the Delegation Gateway caches
     // each delegated JWT (TTL = expiry) and legitimately re-presents it
     // for every request in the session; a `SET NX` on the jti would 401
     // the first cached reuse. Revocation rides the actor-revocation
@@ -219,26 +219,26 @@ pub async fn verify_token(
 // ── certificate-only platform-workload identity ───────────
 
 /// A platform workload's identity resolved from the TLS handshake
-/// (auth DESIGN §4.3f) — no token exists on this path: the
+/// (auth DESIGN §4.3f) - no token exists on this path: the
 /// CA-verified certificate IS the authentication, and the enroll-published
 /// `m2m:workloads` registry map IS the authorization record (scopes +
 /// vertical + enabled, boot-loaded and TTL-cached by this process).
 #[derive(Debug, Clone)]
 pub struct WorkloadIdentity {
-    /// The workload name (certificate CN minus the `m2m-` prefix —
+    /// The workload name (certificate CN minus the `m2m-` prefix -
     /// `service_name` in the registry map).
     pub workload: String,
     /// The scopes the registry map grants this workload (empty when
-    /// missing/disabled — fail-closed: an unenrolled identity exercises
+    /// missing/disabled - fail-closed: an unenrolled identity exercises
     /// nothing).
     pub scopes: Vec<String>,
     /// The workload's vertical (VDC-2 event-ownership gate input;
-    /// `None` when missing/disabled — produce refuses it).
+    /// `None` when missing/disabled - produce refuses it).
     pub vertical: Option<String>,
-    /// The service_type the workload performs work FOR (VDC-4 — Sys's
+    /// The service_type the workload performs work FOR (VDC-4 - Sys's
     /// tenant-snapshot scoped discovery keys on this claim).
     pub service_type: Option<String>,
-    /// The presented certificate thumbprint (base64url SHA-256 of DER —
+    /// The presented certificate thumbprint (base64url SHA-256 of DER -
     /// the audit identity).
     pub thumbprint: String,
 }
@@ -251,15 +251,15 @@ impl WorkloadIdentity {
 }
 
 /// Resolve a platform-workload identity from the TLS-injected certificate
-/// headers against the boot-loaded registry map (request-path read —
+/// headers against the boot-loaded registry map (request-path read -
 /// in-memory snapshot, no I/O). Returns `Err` on missing/invalid identity
 /// headers (the caller answers 401) and `Ok(None)` when the request carried
 /// no client certificate (the caller falls through to the bearer path or
-/// 401s — browser/user flows keep their JWTs).
+/// 401s - browser/user flows keep their JWTs).
 ///
 /// # Errors
 /// Returns the rejection (status + message) for an unenrolled or disabled
-/// workload — the authorization record is the map row.
+/// workload - the authorization record is the map row.
 pub async fn resolve_workload_identity(
     registry: &sentin8::auth::workload_registry::WorkloadMap,
     headers: &HeaderMap,
@@ -307,7 +307,7 @@ pub async fn resolve_workload_identity(
 /// The combined verification entry (auth DESIGN §4.3f):
 /// certificate-first. When the TLS handshake presented an enrolled
 /// platform-workload certificate, the identity is resolved against the
-/// boot-loaded registry map (no token involved — the map is the
+/// boot-loaded registry map (no token involved - the map is the
 /// authorization record). Otherwise the request falls through to the
 /// bearer path (user/delegated JWT flows unchanged).
 ///
@@ -328,7 +328,7 @@ pub async fn verify(
     headers: &HeaderMap,
 ) -> Result<AuthContext, (StatusCode, String)> {
     // Bearer-first, certificate fallback (DESIGN §5): a delegated token
-    // names the acting user in `act.sub` (RFC 8693) — resolving the
+    // names the acting user in `act.sub` (RFC 8693) - resolving the
     // hop's workload certificate first would shadow it. The certificate
     // remains the sole path for pure-M2M calls (no bearer).
     let has_bearer = headers.contains_key(axum::http::header::AUTHORIZATION)
@@ -352,7 +352,7 @@ pub async fn verify(
                 // No expiry: the identity is the certificate (valid until
                 // Acme-side expiry or revocation via the map's `enabled`
                 // flag, observed within the TTL). The synthetic claims live
-                // for the REQUEST only — nothing caches them.
+                // for the REQUEST only - nothing caches them.
                 exp: i64::MAX,
                 token_tp: "m2m".into(),
                 scope: workload.scopes.join(" "),

@@ -3,18 +3,18 @@
 -- SPDX-FileCopyrightText: Copyright Contributors to the Sentin8:Bus
 -- SPDX-License-Identifier: Apache-2.0
 
--- Sentin8:Bus — event bus service (DBX, architecture-principles §6.7).
+-- Sentin8:Bus - event bus service (DBX, architecture-principles §6.7).
 --
 -- `bus.inbox` is BUS-INTERNAL DURABILITY ONLY: it is written exclusively by
 -- Bus's `POST /v1/produce` handler (persisting accepted produce requests
 -- before the XADD) and drained by Bus's own relay under
 -- `sentin8_bus_service` (NOBYPASSRLS). Producers hold NO grants on this
--- table — they write their own local `{service}.outbox` and push via the
+-- table - they write their own local `{service}.outbox` and push via the
 -- produce API. The former BYPASSRLS `sentin8_bus_relay` role is RETIRED.
 --
 -- Every produce-persisted row carries the publisher identity token
--- (`publisher_id_token`) — the JWT that authenticated the request which
--- triggered the domain change (bus design §4.5) — enabling subscriber-side
+-- (`publisher_id_token`) - the JWT that authenticated the request which
+-- triggered the domain change (bus design §4.5) - enabling subscriber-side
 -- delegation via RFC 8693 token exchange.
 
 CREATE SCHEMA IF NOT EXISTS bus;
@@ -24,19 +24,19 @@ CREATE TABLE IF NOT EXISTS bus.inbox (
     -- Event type, e.g. "ledger.account.created".
     event_type      TEXT NOT NULL,
     -- Stream family for Redis stream routing, e.g. "ledger". DBX: derived
-    -- by Bus from the verified M2M token identity (bus design §4.3a) — the
+    -- by Bus from the verified M2M token identity (bus design §4.3a) - the
     -- PG-role-derived resolver (sentin8_bus_current_stream_family) is retired.
     stream_family   TEXT NOT NULL,
     -- JSON event payload.
     payload         JSONB NOT NULL,
-    -- Publisher identity token — the JWT (compact serialization) that
+    -- Publisher identity token - the JWT (compact serialization) that
     -- authenticated the request which triggered this event (bus design §4.5).
     publisher_id_token  TEXT,
-    -- Extracted `sub` claim from the publisher token — for audit queries
+    -- Extracted `sub` claim from the publisher token - for audit queries
     -- and correlation without parsing the full JWT.
     publisher_subject   TEXT,
     -- The verified producer's vertical claim (VDC-2, design/
-    -- sentin8-vertical-data-plane-contract.md §VDC.4) — recorded at
+    -- sentin8-vertical-data-plane-contract.md §VDC.4) - recorded at
     -- produce from the M2M token; re-attached on the relay XADD so
     -- relay-delivered messages carry the same provenance the inline
     -- write does (consumers assert it via `require_publisher`).
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS bus.inbox (
     relayed         BOOLEAN NOT NULL DEFAULT false,
     relayed_at      TIMESTAMPTZ,
     -- Stream entry id (`<ms>-<seq>`) stamped by the produce handler when its
-    -- inline XADD succeeds — single-entry delivery (bus design §4.3b): the
+    -- inline XADD succeeds - single-entry delivery (bus design §4.3b): the
     -- relay skips rows that already carry a message_id, so a produce-path
     -- XADD and the relay drain never publish the same event twice.
     stream_message_id   TEXT,
@@ -128,7 +128,7 @@ GRANT SELECT, INSERT, UPDATE ON bus.inbox TO sentin8_bus_service;
 
 -- ── Sentin8:Policy boot loader (policy design §4.2b-r) ────────────────────
 -- The bus process boot-loads its policy engine. Guarded copy of the sys
--- definition (sys owns the table — bus's init.sql may run first on a fresh
+-- definition (sys owns the table - bus's init.sql may run first on a fresh
 -- bootstrap; the missing-table case degrades and sys's init.sql recreates
 -- the function).
 DO $$
@@ -234,7 +234,7 @@ CREATE POLICY audit_journal_dml ON bus.audit_journal
     USING (sentin8_context_initialized() AND env_id = sentin8_current_env_id())
     WITH CHECK (sentin8_context_initialized() AND env_id = sentin8_current_env_id());
 
--- ── Grants (after every table exists — GRANT on a not-yet-created table
+-- ── Grants (after every table exists - GRANT on a not-yet-created table
 -- aborts the whole init migration on a fresh bootstrap) ────────────────
 GRANT SELECT, INSERT, UPDATE, DELETE ON bus.outbox TO sentin8_bus_service;
 GRANT SELECT, INSERT, UPDATE, DELETE ON bus.audit_journal TO sentin8_bus_service;

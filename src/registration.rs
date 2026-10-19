@@ -71,7 +71,7 @@ fn openapi_spec() -> serde_json::Value {
 const POLICIES: &[PolicySetDecl] = &[
     PolicySetDecl {
         policy_set_name: "scope-mirror",
-        description: "Action-granular scope permits for sentin8:bus over the LIVE effective scope set. Enforced — step 5 is the only gate.",
+        description: "Action-granular scope permits for sentin8:bus over the LIVE effective scope set. Enforced - step 5 is the only gate.",
         policies: "permit(principal, action == Action::\"sentin8:bus:produce\", resource) when { principal.scopes.contains(\"sentin8:bus:produce\") };\npermit(principal, action == Action::\"sentin8:bus:produce\", resource) when { principal.scopes.contains(\"sentin8:bus:admin\") };\npermit(principal, action == Action::\"sentin8:bus:consume\", resource) when { principal.scopes.contains(\"sentin8:bus:consume\") };\npermit(principal, action == Action::\"sentin8:bus:consume\", resource) when { principal.scopes.contains(\"sentin8:bus:admin\") };\npermit(principal, action == Action::\"sentin8:bus:admin\", resource) when { principal.scopes.contains(\"sentin8:bus:admin\") };",
         schema: None,
         mode: "enforced",
@@ -102,7 +102,7 @@ const M2M_GRANTS: &[sentin8::registration::M2mGrant] = &[
         workload: "bus-policy",
         scopes: &["sentin8:bus:consume", "sentin8:stat:measure"],
     },
-    // TLS-RLS-4 (design/sentin8-vertical-data-plane-contract.md §VDC.7): the database-free HostContextResolver’s resolve workload — cache miss calls Sys `GET /v1/resolve/hostname`.
+    // TLS-RLS-4 (design/sentin8-vertical-data-plane-contract.md §VDC.7): the database-free HostContextResolver’s resolve workload - cache miss calls Sys `GET /v1/resolve/hostname`.
     sentin8::registration::M2mGrant {
         workload: "sentin8-bus-tls",
         scopes: &["sentin8:sys:instances:read"],

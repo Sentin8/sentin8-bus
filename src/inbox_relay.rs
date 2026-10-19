@@ -37,13 +37,13 @@ async fn run(pool: sqlx::PgPool, valkey: glide::GlideClient, listener_dsn: Strin
         {
             Ok(p) => p,
             Err(e) => {
-                tracing::error!(error = %e, "failed to connect the LISTEN pool — falling back to poll-only");
+                tracing::error!(error = %e, "failed to connect the LISTEN pool - falling back to poll-only");
                 run_poll_only(pool, valkey, safety_poll, batch_size).await;
                 return;
             }
         },
         Err(e) => {
-            tracing::error!(error = %e, "invalid listener DSN (certificate identity) — falling back to poll-only");
+            tracing::error!(error = %e, "invalid listener DSN (certificate identity) - falling back to poll-only");
             run_poll_only(pool, valkey, safety_poll, batch_size).await;
             return;
         }
@@ -55,14 +55,14 @@ async fn run(pool: sqlx::PgPool, valkey: glide::GlideClient, listener_dsn: Strin
             l
         }
         Err(e) => {
-            tracing::error!(error = %e, "failed to start PgListener — falling back to poll-only");
+            tracing::error!(error = %e, "failed to start PgListener - falling back to poll-only");
             run_poll_only(pool, valkey, safety_poll, batch_size).await;
             return;
         }
     };
 
     if let Err(e) = listener.listen("bus_inbox_changed").await {
-        tracing::error!(error = %e, "failed to LISTEN on bus_inbox_changed — falling back to poll-only");
+        tracing::error!(error = %e, "failed to LISTEN on bus_inbox_changed - falling back to poll-only");
         run_poll_only(pool, valkey, safety_poll, batch_size).await;
         return;
     }
@@ -91,7 +91,7 @@ async fn run(pool: sqlx::PgPool, valkey: glide::GlideClient, listener_dsn: Strin
                 true
             }
             Ok(Err(e)) => {
-                tracing::error!(error = %e, "PgListener error — will reconnect");
+                tracing::error!(error = %e, "PgListener error - will reconnect");
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 let reconnected: Result<sqlx::postgres::PgListener, sqlx::Error> = async {
                     let opts = sentin8::config::pg_pool::connect_options_for(&conn_str)?;
@@ -110,12 +110,12 @@ async fn run(pool: sqlx::PgPool, valkey: glide::GlideClient, listener_dsn: Strin
                         let _ = listener.listen("bus_inbox_changed").await;
                     }
                     Err(e2) => {
-                        tracing::error!(error = %e2, "PgListener reconnect failed — continuing with poll-only");
+                        tracing::error!(error = %e2, "PgListener reconnect failed - continuing with poll-only");
                     }
                 }
                 false
             }
-            Err(_) => true, // timeout elapsed — time for the safety poll
+            Err(_) => true, // timeout elapsed - time for the safety poll
         };
 
         loop {

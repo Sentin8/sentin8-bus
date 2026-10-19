@@ -26,9 +26,9 @@ use crate::handlers;
         crate::sse::sse_handler,
         crate::admin_ui::get_admin_ui,
         crate::admin_ui::get_admin_data,
-        // Shield policy-admin surface — the shared annotated wrappers in
+        // Shield policy-admin surface - the shared annotated wrappers in
         // the shell (same wire contract the generic handlers above serve;
-        // utoipa cannot path a generic handler — OAPEC design §2 rule 3).
+        // utoipa cannot path a generic handler - OAPEC design §2 rule 3).
         sentin8::shell::policy_list_sets,
         sentin8::shell::policy_get_set,
         sentin8::shell::policy_put_set,
@@ -74,7 +74,7 @@ use crate::handlers;
     )),
     security(),
     tags(
-        (name = "bus", description = "Sentin8:Bus admin API — produce, consume, ack, DLQ, streams, metrics"),
+        (name = "bus", description = "Sentin8:Bus admin API - produce, consume, ack, DLQ, streams, metrics"),
     ),
 )]
 /// The busopenapi type.

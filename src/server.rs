@@ -17,7 +17,7 @@ pub async fn build_state(
     let valkey = sentin8::middleware::valkey_client(&config.valkey_url, "sentin8:bus").await?;
 
     // BUSCONNP-1: the fixed dedicated-client pool for HTTP consume
-    // blocking reads — connected at boot so the first read pays no
+    // blocking reads - connected at boot so the first read pays no
     // handshake; a partially-failed pool still serves (fail-open).
     let consume_pool = crate::consume_pool::ConsumePool::connect(&config.valkey_url, 8).await?;
     tracing::info!(
@@ -55,7 +55,7 @@ pub async fn build_state(
     {
         Ok(map) => map,
         Err(e) => {
-            tracing::warn!(error = %e, "bus: workload registry map unavailable at boot — certificate-workload calls fail-closed until next boot");
+            tracing::warn!(error = %e, "bus: workload registry map unavailable at boot - certificate-workload calls fail-closed until next boot");
             sentin8::auth::workload_registry::WorkloadMap::boot_load_empty("sentin8:bus")
         }
     };
@@ -76,7 +76,7 @@ pub async fn build_state(
     };
 
     // Reaper (bus DESIGN §4.3): the retry and delayed sorted sets drain
-    // themselves — due retries re-XADD to their source stream (exhausted
+    // themselves - due retries re-XADD to their source stream (exhausted
     // retries land in the DLQ), due delayed messages XADD to their target.
     crate::reaper::spawn(Arc::new(state.clone()));
 
