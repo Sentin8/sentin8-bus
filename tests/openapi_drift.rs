@@ -12,17 +12,14 @@
 //! the site API pages can trail.
 
 use sentin8::openapi::OpenApi;
-use sentin8::shell::drift_guard::{
-    assert_openapi_covers_router, served_routes, spec_pairs,
-};
+use sentin8::shell::drift_guard::{assert_openapi_covers_router, served_routes, spec_pairs};
 use sentin8_bus_server::openapi::BusOpenApi;
 use sentin8_bus_server::server::routes;
 
 #[tokio::test]
 async fn openapi_spec_covers_every_served_route() {
     // Typed-but-unbound router: axum's routing table is state-independent.
-    let router: axum::Router<sentin8_bus_server::handlers::AppState> =
-        routes(axum::Router::new());
+    let router: axum::Router<sentin8_bus_server::handlers::AppState> = routes(axum::Router::new());
     let served = served_routes(&router);
     let pairs = spec_pairs(&BusOpenApi::openapi());
     assert_openapi_covers_router(&served, &pairs, &[]);
