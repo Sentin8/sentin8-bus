@@ -73,7 +73,7 @@ pub struct AppState {
     /// The Valkey GLIDE client (shared command plane - non-blocking
     /// commands only; blocking reads ride the consume pool).
     pub valkey: glide::GlideClient,
-    /// The blocking-consume connection pool (BUSCONNP-1): every
+    /// The blocking-consume connection pool : every
     /// `POST /v1/consume` blocking `XREADGROUP` leases a dedicated
     /// client from here for the duration of the read.
     pub consume_pool: Arc<crate::consume_pool::ConsumePool>,
@@ -97,7 +97,7 @@ pub fn stream_key(env_id: &str, family: &str) -> String {
     format!("bus:{env_id}:{family}")
 }
 
-/// The owning vertical of an event type (VDC-2, design/
+/// The owning vertical of an event type (design/
 /// sentin8-vertical-data-plane-contract.md §VDC.4): the FIRST colon segment
 /// of the event name (`sentin8:sys:service:updated` → `sentin8`,
 /// `bank8:ledger:posting:committed` → `bank8`). Every event name follows the
@@ -109,7 +109,7 @@ pub fn event_vertical_prefix(event_type: &str) -> &str {
     event_type.split(':').next().unwrap_or("")
 }
 
-/// VDC-2 event-ownership gate: rejects produce when the authenticated
+/// event-ownership gate: rejects produce when the authenticated
 /// producer's M2M `vertical` claim does not match the event type's owning
 /// vertical (first colon segment). Platform producers carry
 /// `vertical = "sentin8"`; a missing claim (pre-rotation tokens, non-M2M
@@ -134,7 +134,7 @@ fn enforce_event_ownership(
             format!(
                 "event_ownership: event_type '{event_type}' belongs to vertical \
                  '{expected}' but the producer's identity vertical is '{actual}' \
-                 (VDC-2 - missing or mismatched vertical; enroll the owning service)"
+ ( - missing or mismatched vertical; enroll the owning service)"
             ),
         ));
     }
@@ -255,7 +255,7 @@ pub async fn produce_batch(
     Ok(Json(ProduceBatchResponse { results }))
 }
 
-/// The produce env contract (bus DESIGN §4.3, WARN-21): the REQUEST's env is
+/// The produce env contract (bus DESIGN §4.3,): the REQUEST's env is
 /// authoritative for M2M workload tokens - tenancy travels per request (the
 /// outbox relay drains env-by-env and produces tenant-family rows that its
 /// system-env token could never claim), while OWNERSHIP stays per identity
@@ -299,7 +299,7 @@ async fn produce_single(
     req: ProduceRequest,
 ) -> Result<ProduceResponse, (StatusCode, String)> {
     validate_stream_family(&req.stream_family)?;
-    // VDC-2: event ownership - the event_type's first colon segment must
+    // event ownership - the event_type's first colon segment must
     // match the producer's M2M `vertical` claim (fail-closed on a missing
     // claim; see `enforce_event_ownership`).
     enforce_event_ownership(a, &req.event_type)?;
@@ -347,7 +347,7 @@ async fn produce_single(
         .publisher_subject
         .clone()
         .unwrap_or_else(|| a.effective_subject());
-    // VDC-2: record the verified producer's vertical claim - the consumer
+    // record the verified producer's vertical claim - the consumer
     // side of the event-ownership gate (crates/bus/client
     // `require_publisher` asserts the event_type's first segment matches).
     let publisher_vertical = a.effective_vertical();
@@ -478,7 +478,7 @@ fn default_count() -> u64 {
     10
 }
 
-/// The server-side cap on a consume request's `block_ms` (BUSCONNP-1,
+/// The server-side cap on a consume request's `block_ms` (
 /// DESIGN.md §8 invariant 10): the caller's blocking hint is honored
 /// up to 5s - the bus, not the caller, owns its connection occupancy
 /// budget. Longer hints are truncated (the caller observes the cap as a
@@ -529,7 +529,7 @@ pub struct ConsumeMessage {
     pub publisher_subject: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    /// The verified producer's vertical claim (VDC-2) - recorded at
+    /// The verified producer's vertical claim - recorded at
     /// produce from the M2M token; consumers assert it against the
     /// event_type's first colon segment (`require_publisher`).
     pub publisher_vertical: Option<String>,
@@ -578,7 +578,7 @@ pub async fn consume(
         .query_async(&conn)
         .await;
 
-    // BUSCONNP-1 (DESIGN.md §8 invariant 10): the blocking XREADGROUP
+    // (DESIGN.md §8 invariant 10): the blocking XREADGROUP
     // runs on a DEDICATED pooled client - never the shared command
     // client. A blocking read on the shared client serializes behind
     // all other Valkey traffic; short-block pollers then pin the GLIDE
@@ -666,7 +666,7 @@ pub async fn consume(
         Err(e) => {
             // A timed-out or failed read is an EMPTY batch - the PEL
             // holds nothing (nothing was delivered), so the caller
-            // simply re-polls (BUSCONNP-1 consume lifecycle). The miss
+            // simply re-polls (consume lifecycle). The miss
             // is logged at debug so a poller storm is observable without
             // spamming WARN.
             tracing::debug!(
@@ -1406,7 +1406,7 @@ pub async fn metrics(
 
 #[cfg(test)]
 mod vdc_tests {
-    //! VDC-2 event-ownership gate unit tests (design/
+    //! event-ownership gate unit tests (design/
     //! sentin8-vertical-data-plane-contract.md §VDC.4).
 
     use super::event_vertical_prefix;

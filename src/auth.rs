@@ -49,7 +49,7 @@ impl AuthContext {
         self.claims.has_scope(scope)
     }
 
-    /// The caller's vertical for the VDC-2 event-ownership gate -
+    /// The caller's vertical for the event-ownership gate -
     /// the map-stamped vertical on the certificate path, the JWT claim on
     /// the bearer path.
     pub fn effective_vertical(&self) -> Option<String> {
@@ -232,10 +232,10 @@ pub struct WorkloadIdentity {
     /// missing/disabled - fail-closed: an unenrolled identity exercises
     /// nothing).
     pub scopes: Vec<String>,
-    /// The workload's vertical (VDC-2 event-ownership gate input;
+    /// The workload's vertical (event-ownership gate input;
     /// `None` when missing/disabled - produce refuses it).
     pub vertical: Option<String>,
-    /// The service_type the workload performs work FOR (VDC-4 - Sys's
+    /// The service_type the workload performs work FOR (- Sys's
     /// tenant-snapshot scoped discovery keys on this claim).
     pub service_type: Option<String>,
     /// The presented certificate thumbprint (base64url SHA-256 of DER -

@@ -16,7 +16,7 @@ pub async fn build_state(
     let config = crate::config::BusConfig::from_env();
     let valkey = sentin8::middleware::valkey_client(&config.valkey_url, "sentin8:bus").await?;
 
-    // BUSCONNP-1: the fixed dedicated-client pool for HTTP consume
+    // the fixed dedicated-client pool for HTTP consume
     // blocking reads - connected at boot so the first read pays no
     // handshake; a partially-failed pool still serves (fail-open).
     let consume_pool = crate::consume_pool::ConsumePool::connect(&config.valkey_url, 8).await?;

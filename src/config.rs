@@ -37,7 +37,7 @@ impl BusConfig {
                 .expect("SENTIN8_BUS_PORT must be set by captain")
                 .parse()
                 .expect("SENTIN8_BUS_PORT must be a valid u16"),
-            // VALKEYDERIVE-1 (group DESIGN.md §3.1): explicit env override,
+            // (group DESIGN.md §3.1): explicit env override,
             // else the plane-derived URL (the `/0` suffix is inert - the
             // streams live in DB 0 and ACLs scope the keys).
             valkey_url: env::var("SENTIN8_BUS_VALKEY_URL")

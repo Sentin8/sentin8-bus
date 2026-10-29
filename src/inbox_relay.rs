@@ -23,7 +23,7 @@ async fn run(pool: sqlx::PgPool, valkey: glide::GlideClient, listener_dsn: Strin
 
     // The LISTEN connection is a dedicated 1-connection pool built from
     // the same certificate-presenting options as the service pool
-    // (DESIGN §2, BUSLISTEN-1): `PgListener::connect` on the raw DSN
+    // (DESIGN §2,): `PgListener:: connect` on the raw DSN
     // would present no client certificate and be refused by the
     // TLS-only cert-auth plane, silently degrading the relay to
     // poll-only at every boot.
@@ -248,7 +248,7 @@ async fn drain(
         if let Some(ref token) = publisher_id_token {
             xadd.arg("publisher_id_token").arg(token);
         }
-        // VDC-2: re-attach the recorded provenance on relay-delivered
+        // re-attach the recorded provenance on relay-delivered
         // messages so `require_publisher` sees the same field the inline
         // XADD writes.
         if let Some(ref vert) = publisher_vertical {

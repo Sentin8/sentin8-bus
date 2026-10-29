@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Sentin8:Bus
 // SPDX-License-Identifier: Apache-2.0
 
-//! The blocking-consume connection pool - the BUSCONNP-1 invariant
+//! The blocking-consume connection pool - the invariant
 //! (`DESIGN.md` §8 invariant 10): a blocking `XREADGROUP` from the HTTP
 //! consume handler NEVER occupies the shared command client.
 //!

@@ -14,7 +14,7 @@ pub mod admin_ui;
 pub mod auth;
 /// Environment configuration.
 pub mod config;
-/// The blocking-consume connection pool (BUSCONNP-1).
+/// The blocking-consume connection pool .
 pub mod consume_pool;
 /// HTTP handlers - produce, consume, DLQ, metrics.
 pub mod handlers;

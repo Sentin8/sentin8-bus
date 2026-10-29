@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS bus.inbox (
     -- Extracted `sub` claim from the publisher token - for audit queries
     -- and correlation without parsing the full JWT.
     publisher_subject   TEXT,
-    -- The verified producer's vertical claim (VDC-2, design/
+    -- The verified producer's vertical claim (design/
     -- sentin8-vertical-data-plane-contract.md §VDC.4) - recorded at
     -- produce from the M2M token; re-attached on the relay XADD so
     -- relay-delivered messages carry the same provenance the inline
