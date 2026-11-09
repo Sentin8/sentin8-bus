@@ -14,7 +14,7 @@ use serde::Deserialize;
 
 use crate::auth;
 use crate::handlers::{
-    stream_key, validate_stream_family, AppState, ConsumeMessage, StreamEntries,
+    consume_env, stream_key, validate_stream_family, AppState, ConsumeMessage, StreamEntries,
 };
 
 #[derive(Debug, Deserialize, utoipa::IntoParams, utoipa::ToSchema)]
@@ -27,6 +27,12 @@ pub struct SseQuery {
     #[serde(default = "default_consumer_name")]
     /// The consumer name.
     pub consumer_name: String,
+    /// The stream's tenant env - the per-request tenancy
+    /// declaration (the produce env contract's consume twin): an M2M or
+    /// delegated consumer declares which tenant stream to read; a user
+    /// token must omit it and reads its own token env (cross-env access
+    /// comes from a role, never a query field).
+    pub env_id: Option<uuid::Uuid>,
 
     #[serde(default)]
     /// The token.
@@ -109,7 +115,7 @@ pub async fn sse_handler(
         return e.into_response();
     }
 
-    let env_id = match a.env_id() {
+    let env_id = match consume_env(&a, q.env_id) {
         Ok(id) => id,
         Err((code, msg)) => return (code, msg).into_response(),
     };

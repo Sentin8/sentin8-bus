@@ -287,6 +287,39 @@ fn produce_env(a: &auth::AuthContext, req_env: Option<Uuid>) -> Result<Uuid, (St
     }
 }
 
+/// The consume env contract (bus DESIGN §4.3 - the produce env contract's
+/// consume twin): an M2M workload consumer DECLARES which tenant stream it
+/// reads (`bus:{env_id}:{family}`), the same per-request tenancy the outbox
+/// relay rides on produce - one workload serves all tenant envs, and a
+/// data-plane consumer (e.g. an open-banking provider seeding grant rows
+/// per tenant) reads the streams its events actually land on. USER tokens
+/// keep the strict check: a human caller consumes only the env their token
+/// carries (cross-env access must come from a role, never a query field).
+pub(crate) fn consume_env(
+    a: &auth::AuthContext,
+    req_env: Option<Uuid>,
+) -> Result<Uuid, (StatusCode, String)> {
+    match req_env {
+        Some(env) if a.claims.token_tp == "m2m" || a.claims.token_tp == "delegated" => Ok(env),
+        Some(env) => {
+            let token_env = a.env_id()?;
+            if env != token_env {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    "env_id does not match the authenticated tenant".to_string(),
+                ));
+            }
+            Ok(env)
+        }
+        None => a.env_id().map_err(|_| {
+            (
+                StatusCode::FORBIDDEN,
+                "tenant_unresolved: token has no env_id claim".to_string(),
+            )
+        }),
+    }
+}
+
 /// The single-produce core shared by `produce` and `produce_batch`
 /// (BUS-3): verify-then-validate-then-persist-then-XADD for ONE request.
 /// `produce` calls it with the request's own env check; the batch handler
@@ -472,6 +505,10 @@ pub struct ConsumeRequest {
     #[serde(default)]
     /// The block ms.
     pub block_ms: u64,
+    /// The stream's tenant env - the per-request tenancy declaration
+    /// (the consume env contract): an M2M/delegated consumer declares
+    /// which tenant stream to read; a user token must omit it.
+    pub env_id: Option<Uuid>,
 }
 
 fn default_count() -> u64 {
@@ -563,7 +600,7 @@ pub async fn consume(
     .await?;
     validate_stream_family(&req.stream_family)?;
 
-    let env_id = a.env_id()?;
+    let env_id = consume_env(&a, req.env_id)?;
     let stream = stream_key(&env_id.to_string(), &req.stream_family);
     let group = format!("{}.{}", a.claims.sub, req.consumer_group);
 
@@ -691,6 +728,9 @@ pub struct AckRequest {
     pub consumer_group: String,
     /// message identifier.
     pub message_id: String,
+    /// The stream's tenant env (the consume env contract) - the env the
+    /// delivery came from; omit for the caller's token env.
+    pub env_id: Option<Uuid>,
 }
 
 #[utoipa::path(
@@ -721,7 +761,12 @@ pub async fn ack(
     .await?;
     validate_stream_family(&req.stream_family)?;
 
-    let env_id = a.env_id()?;
+    // The consume env contract applies to acks too: the entry was
+    // delivered from the DECLARED tenant stream, so the ack must name
+    // the same stream - resolving the token env here would XACK a
+    // different key and leave the entry pending (the 60s XAUTOCLAIM
+    // sweep redelivers it forever).
+    let env_id = consume_env(&a, req.env_id)?;
     let stream = stream_key(&env_id.to_string(), &req.stream_family);
     let group = format!("{}.{}", a.claims.sub, req.consumer_group);
 
@@ -766,6 +811,9 @@ pub struct NackRequest {
     #[serde(default)]
     /// The retry after secs.
     pub retry_after_secs: Option<u64>,
+    /// The stream's tenant env (the consume env contract) - the env the
+    /// delivery came from; omit for the caller's token env.
+    pub env_id: Option<Uuid>,
     /// How many retries this message has already burned (nack count -
     /// maintained by the consumer across redeliveries). At `MAX_RETRIES`
     /// the reaper routes the message to the DLQ instead of the retry set.
@@ -802,7 +850,9 @@ pub async fn nack(
     .await?;
     validate_stream_family(&req.stream_family)?;
 
-    let env_id = a.env_id()?;
+    // The consume env contract applies to nacks too (the entry's stream
+    // is the DECLARED tenant env - see ack).
+    let env_id = consume_env(&a, req.env_id)?;
     let stream = stream_key(&env_id.to_string(), &req.stream_family);
     let group = format!("{}.{}", a.claims.sub, req.consumer_group);
     let retry_after = req.retry_after_secs.unwrap_or(30);
