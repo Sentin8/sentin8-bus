@@ -118,6 +118,7 @@ pub fn print(section: Option<String>) -> anyhow::Result<()> {
         service_type: "sentin8:bus",
         subdomain: "bus",
         health_path: "/v1/health",
+        exposure: "",
         admin_scopes: &[
             AdminScope::Tuple("sentin8:bus:admin", "sentin8:bus:admin"),
             AdminScope::Tuple("sentin8:bus:admin", "sentin8:bus:produce"),
